@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sticker Generator v2.1</title>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --text:#1e2329; --muted:#6b7280; --line:#d9dde3; --accent:#0b67d0; --good:#087a52; --warn:#9a6700; }
+  *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:1180px;margin:24px auto;padding:0 18px}.title{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}
+  h1{margin:0;font-size:28px}.sub{color:var(--muted);font-size:14px;margin-top:4px}.badge{font-size:12px;background:#eaf2ff;color:#174ea6;padding:5px 8px;border-radius:999px}
+  .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card h2{font-size:17px;margin:0 0 14px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}
+  label{display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#38404a} input,select{width:100%;padding:9px 10px;border:1px solid #cbd1d8;border-radius:7px;background:#fff;font-size:14px}
+  input[type=file]{padding:7px}.row{display:flex;gap:10px;align-items:center}.row input[type=checkbox]{width:auto}.help{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
+  .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#f8fafc;border:1px solid #e6e9ee;border-radius:8px;padding:10px}.stat b{display:block;font-size:20px;margin-top:2px}.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .ok{color:var(--good)}.warning{color:var(--warn)}
+  button{border:0;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer}.primary{background:var(--accent);color:white}.secondary{background:#edf1f5;color:#28313b}.primary:disabled{opacity:.45;cursor:not-allowed}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.downloads{margin-top:12px;display:none;gap:8px;flex-wrap:wrap}.downloads a{display:inline-block;text-decoration:none;background:#e9f7f1;color:#075f42;border:1px solid #b7e0cf;padding:9px 12px;border-radius:8px;font-weight:600;font-size:13px}
+  canvas{width:100%;height:auto;border:1px solid #d4d9df;background:white;border-radius:7px}.note{font-size:12px;line-height:1.5;color:#4e5965;background:#f7f9fb;border:1px solid #e1e5ea;border-radius:8px;padding:10px;margin-top:12px}
+  .fileinfo{font-size:12px;color:#4e5965;margin-top:6px;min-height:18px}.sectiongap{margin-top:16px;padding-top:14px;border-top:1px solid #eceff2}
+  .required::after{content:" *";color:#b42318;font-weight:700}.invalid{border-color:#d92d20!important;background:#fff8f7!important}.valid{border-color:#77b89b!important}
+  .dropzone{border:2px dashed #b8c2cf;border-radius:10px;padding:18px;text-align:center;background:#fafbfd;transition:.15s;cursor:pointer}.dropzone:hover,.dropzone.dragover{border-color:var(--accent);background:#eef5ff}.dropzone strong{display:block;font-size:14px}.dropzone small{display:block;color:var(--muted);margin-top:4px}.dropzone input[type=file]{display:none}
+  .readiness{margin-top:12px;border:1px solid #e1e5ea;border-radius:8px;padding:10px;background:#fbfcfd}.readiness h3{font-size:13px;margin:0 0 7px}.readyline{font-size:12px;line-height:1.45;margin:3px 0}.readyline.okay{color:var(--good)}.readyline.bad{color:#b42318}.readyline.warn{color:var(--warn)}
+  .readiness.pass{border-color:#9bd5bd;background:#f3fbf7}.readiness.warning{border-color:#e5c77b;background:#fffaf0}.readiness.stop{border-color:#efb0aa;background:#fff7f6}.requirements{font-size:12px;line-height:1.55;color:#46515d}.requirements b{color:#252b33}.requirements ul{margin:8px 0 0 18px;padding:0}.requirements li{margin:3px 0}.pill{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em}.pill.pass{background:#dff5ea;color:#087a52}.pill.warning{background:#fff0c7;color:#805500}.pill.stop{background:#fde5e2;color:#a72c24}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title"><div><h1>Sticker Generator</h1><div class="sub">SRA3 print PDF + PDF-compatible Illustrator cut file</div></div><div class="badge">Prototype v2.1 — Production Preflight</div></div>
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>1. Job & artwork</h2>
+        <div class="fields">
+          <div class="full"><label class="required">Artwork PDF</label><div id="dropZone" class="dropzone" tabindex="0"><input id="pdfFile" type="file" accept="application/pdf,.pdf"><strong>Drop PDF here or click to choose</strong><small>One PDF at a time</small></div><div id="fileInfo" class="fileinfo">No file loaded.</div></div>
+          <div class="full row"><input id="useNaming" type="checkbox" checked><label for="useNaming" style="margin:0">Use job/customer naming</label></div>
+          <div id="jobNoWrap"><label id="jobNoLabel" class="required">Job number</label><input id="jobNo" placeholder="e.g. 55792"></div>
+          <div><label class="required">Required quantity</label><input id="qty" type="number" min="1" value="250"></div>
+          <div id="custNameWrap"><label id="custNameLabel" class="required">Customer name / abbreviation</label><input id="custName" placeholder="e.g. TFB"></div>
+          <div><label>Extra overs</label><input id="overs" type="number" min="0" value="0"></div>
+          <div class="full"><label>Cut source</label><select id="cutSource">
+            <option value="auto">Auto — recognised dieline, otherwise TrimBox rectangle</option>
+            <option value="spot">Supplied spot-colour dieline</option>
+            <option value="trimbox">PDF TrimBox — rectangle / square</option>
+            <option value="circle">Manual circle / ellipse</option>
+            <option value="rect">Manual rectangle / square</option>
+          </select><div class="help">Production rule: custom shapes require a supplied vector spot-colour dieline. Auto only selects clearly named cut colours (for example CutContour or Dieline); it will not guess from arbitrary CMYK/RGB strokes.</div></div>
+          <div id="spotWrap" class="full" style="display:none"><label>Cut spot colour</label><select id="spotChoice"></select><div class="help">Printing spot colours such as Pantones are preserved. Only the selected cut colour is suppressed from PRINT and isolated into CUT.</div></div>
+          <div><label class="required">Finished width (mm)</label><input id="cutW" type="number" step="0.1" min="1" value="100"></div>
+          <div><label class="required">Finished height (mm)</label><input id="cutH" type="number" step="0.1" min="1" value="100"></div>
+          <div class="full row"><input id="hasBleed" type="checkbox"><label for="hasBleed" style="margin:0">Artwork has bleed</label></div>
+          <div id="bleedAmountWrap"><label>Bleed per side (mm)</label><input id="bleedAmount" type="number" step="0.1" min="0" value="0"><div class="help">Auto-filled from the PDF BleedBox where possible. Artwork between TrimBox and BleedBox is preserved and may extend into the gap between copies.</div></div>
+          <div class="full"><div id="cutDetect" class="note" style="margin-top:0">Load a PDF to analyse the likely cut source.</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Artwork requirements</h2>
+        <div class="requirements"><b>Preferred Working PDF standard</b>
+          <ul>
+            <li>One sticker / artwork kind per PDF, supplied at 100% scale.</li>
+            <li>Rectangular labels: finished size defined by the PDF TrimBox.</li>
+            <li>Custom shapes: closed vector dieline supplied as a spot colour, preferably named <b>CutContour</b> or <b>Dieline</b>.</li>
+            <li>Bleed should already be present in the Working artwork; a valid BleedBox is preferred.</li>
+            <li>Printable Pantone / spot colours are allowed and must remain printable.</li>
+            <li>Customer crop marks and irrelevant page furniture should be removed or kept outside the production page boxes.</li>
+          </ul>
+          <div class="help" style="margin-top:8px">The generator validates and imposes production-ready artwork. It will flag ambiguous files rather than silently guessing how they should be cut.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>2. Sheet & layout</h2>
+        <div class="fields">
+          <div><label>Sheet preset</label><select id="preset"><option value="sra3">SRA3 — 320 × 450 mm</option><option value="custom">Custom</option></select></div>
+          <div><label>Gap (mm)</label><input id="gap" type="number" step="0.1" min="0" value="2"><div class="help">Gap is the distance between CUT lines. Bleed can extend into this gap. Without bleed: 0 mm permitted.</div></div>
+          <div><label>Sheet width (mm)</label><input id="sheetW" type="number" step="0.1" value="320" disabled></div>
+          <div><label>Sheet height (mm)</label><input id="sheetH" type="number" step="0.1" value="450" disabled></div>
+          <div class="full row"><input id="allowRotate" type="checkbox" checked><label for="allowRotate" style="margin:0">Allow 90° rotation if it fits more up</label></div>
+        </div>
+        <div class="note"><b>Registration marks:</b> fixed right-angle marks, 6 mm long, 7 mm inset from each sheet edge, matching the supplied cutter example. The cut file uses magenta cut paths and black registration marks.</div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>3. Production calculation</h2>
+        <div class="summary">
+          <div class="stat"><span>Layout</span><b id="layoutStat">—</b></div>
+          <div class="stat"><span>Number-up</span><b id="upStat">—</b></div>
+          <div class="stat"><span>Sheets required</span><b id="sheetsStat">—</b></div>
+          <div class="stat"><span>Total produced</span><b id="produceStat">—</b></div>
+          <div class="stat"><span>Production overs</span><b id="prodOversStat">—</b></div>
+          <div class="stat"><span>Target incl. extra overs</span><b id="targetStat">—</b></div>
+        </div>
+        <div id="readiness" class="readiness"><h3>Preflight — waiting for artwork</h3><div id="readyList"></div></div>
+        <div class="actions"><button id="generateFiles" class="primary" disabled>Generate Files</button><button id="refresh" class="secondary">Recalculate</button></div>
+        <div id="downloads" class="downloads"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Sheet preview</h2>
+      <canvas id="preview" width="640" height="900"></canvas>
+      <div id="status" class="note">Load a production-ready Working PDF to begin. Preflight will PASS, WARN, or STOP the job. Warnings require operator judgement; STOP items block generation.</div>
+    </div>
+  </div>
+</div>
+<script>
+const { PDFDocument, rgb } = PDFLib;
+const MM_TO_PT = 72 / 25.4;
+const el = id => document.getElementById(id);
+let sourceBytes = null, sourceName = '', sourceSizeMM = null, sourceBoxes = null, sourcePageCount = 0, detectedSpots = [];
+let lastCalc = null, urls = [];
+let isLoadingPdf=false, isRecalculating=false;
+
+function mm(v){ return Number(v) || 0; }
+function safeStem(name){ return name.replace(/\.[^.]+$/, '').trim(); }
+function cleanName(s){ return s.replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim(); }
+function fmt(v){ return Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/,''); }
+function decodeLatin1(buf){
+  try { return new TextDecoder('latin1').decode(buf); }
+  catch(e){ return Array.from(new Uint8Array(buf)).map(b=>String.fromCharCode(b)).join(''); }
+}
+function pdfNameDecode(s){
+  return s.replace(/#([0-9A-Fa-f]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+}
+function harvestSpotNamesFromText(txt,names){
+  // PDF Separation/DeviceN syntax is often written with no whitespace, e.g.
+  // [/Separation/CutContour1/DeviceCMYK ...], so do not require spaces.
+  for(const m of txt.matchAll(/\/Separation\b\s*\/([^\s\/\[\]<>(){}%]+)/g)) names.add(pdfNameDecode(m[1]));
+  for(const m of txt.matchAll(/\/DeviceN\b\s*\[([^\]]+)\]/g)){
+    for(const n of m[1].matchAll(/\/([^\s\/\[\]<>(){}%]+)/g)) names.add(pdfNameDecode(n[1]));
+  }
+  // Illustrator commonly exposes custom swatch names in XMP even when the
+  // PDF colour-space object itself is compressed.
+  for(const m of txt.matchAll(/<xmpG:swatchName>([^<]+)<\/xmpG:swatchName>/g)){
+    const n=m[1].trim(); if(n) names.add(n);
+  }
+  for(const m of txt.matchAll(/%%DocumentCustomColors:\s*\(([^)]+)\)/g)){
+    const n=m[1].trim(); if(n) names.add(n);
+  }
+}
+async function inflateBytes(bytes){
+  try{
+    if(typeof DecompressionStream!=='undefined'){
+      const ds=new DecompressionStream('deflate');
+      const stream=new Blob([bytes]).stream().pipeThrough(ds);
+      const ab=await new Response(stream).arrayBuffer();
+      return new Uint8Array(ab);
+    }
+  }catch(e){}
+  return null;
+}
+async function detectSpotColours(buf){
+  const raw=new Uint8Array(buf), txt=decodeLatin1(buf), names=new Set();
+  harvestSpotNamesFromText(txt,names);
+  // Most Illustrator PDFs expose the spot name in raw PDF/XMP data. Return
+  // immediately when found: this avoids expensive scanning on very complex PDFs.
+  if(names.size) return [...names].filter(n=>!['DeviceCMYK','DeviceRGB','DeviceGray','Pattern','None'].includes(n));
+
+  // Fallback for PDFs whose colour-space declarations are only inside Flate
+  // streams. Use a linear byte/text scan rather than one huge regexp, which can
+  // overflow the browser regexp stack on complex Illustrator PDFs.
+  let pos=0, scanned=0, maxStreams=300;
+  while(scanned<maxStreams){
+    const f=txt.indexOf('/FlateDecode',pos); if(f<0) break;
+    const streamWord=txt.indexOf('stream',f); if(streamWord<0) break;
+    const lineEnd=txt.indexOf('\n',streamWord); if(lineEnd<0) break;
+    const end=txt.indexOf('endstream',lineEnd+1); if(end<0) break;
+    let a=lineEnd+1, b=end;
+    if(raw[a]===13 && raw[a+1]===10) a+=2;
+    while(b>a && (raw[b-1]===10 || raw[b-1]===13)) b--;
+    const inflated=await inflateBytes(raw.slice(a,b));
+    if(inflated) harvestSpotNamesFromText(decodeLatin1(inflated),names);
+    if(names.size) break;
+    pos=end+9; scanned++;
+  }
+  return [...names].filter(n=>!['DeviceCMYK','DeviceRGB','DeviceGray','Pattern','None'].includes(n));
+}
+function normalisePageBox(box, fallbackW=0, fallbackH=0){
+  if(!box) return null;
+  const x = Number.isFinite(box.x) ? box.x : (Number.isFinite(box.left) ? box.left : 0);
+  const y = Number.isFinite(box.y) ? box.y : (Number.isFinite(box.bottom) ? box.bottom : 0);
+  const width = Number.isFinite(box.width) ? box.width : (Number.isFinite(box.right) && Number.isFinite(box.left) ? box.right - box.left : fallbackW);
+  const height = Number.isFinite(box.height) ? box.height : (Number.isFinite(box.top) && Number.isFinite(box.bottom) ? box.top - box.bottom : fallbackH);
+  if(!(width>0) || !(height>0)) return null;
+  const left = Number.isFinite(box.left) ? box.left : x;
+  const bottom = Number.isFinite(box.bottom) ? box.bottom : y;
+  return { left, bottom, right:left+width, top:bottom+height, width, height };
+}
+function tryGetPageBox(page, methodName){
+  try{
+    if(typeof page[methodName] === 'function') return normalisePageBox(page[methodName](), page.getWidth?.()||0, page.getHeight?.()||0);
+  }catch(e){}
+  return null;
+}
+function chooseReferenceBox(boxes){
+  return boxes?.trim || boxes?.crop || boxes?.media || boxes?.bleed || null;
+}
+function chooseEmbedBox(boxes, keepBleed){
+  return keepBleed ? (boxes?.bleed || boxes?.trim || boxes?.crop || boxes?.media || null)
+                   : (boxes?.trim || boxes?.crop || boxes?.media || boxes?.bleed || null);
+}
+function boxMmString(box){
+  return box ? `${(box.width/MM_TO_PT).toFixed(2)} × ${(box.height/MM_TO_PT).toFixed(2)} mm` : '—';
+}
+function currentArtworkSizeMM(){
+  const cutW=mm(el('cutW').value), cutH=mm(el('cutH').value);
+  if(!el('hasBleed').checked) return {w:cutW,h:cutH,bleedX:0,bleedY:0};
+  const b=Math.max(0,mm(el('bleedAmount').value));
+  return {w:cutW+2*b,h:cutH+2*b,bleedX:b,bleedY:b};
+}
+function inferBleedFromSource(){
+  if(!sourceBoxes) return 0;
+  const cutW=mm(el('cutW').value), cutH=mm(el('cutH').value);
+  const box=chooseEmbedBox(sourceBoxes,true) || chooseReferenceBox(sourceBoxes);
+  if(!box || !cutW || !cutH) return 0;
+  const bw=Math.max(0,(box.width/MM_TO_PT-cutW)/2);
+  const bh=Math.max(0,(box.height/MM_TO_PT-cutH)/2);
+  const vals=[bw,bh].filter(v=>v>0.01);
+  return vals.length ? Math.min(...vals) : 0;
+}
+function updateBleedField(autoFill=false){
+  const wrap=el('bleedAmountWrap');
+  wrap.style.display=el('hasBleed').checked?'block':'none';
+  if(autoFill && el('hasBleed').checked){
+    const inferred=inferBleedFromSource();
+    if(inferred>0) el('bleedAmount').value=inferred.toFixed(2);
+  }
+}
+function isLikelyCutSpotName(name){
+  const n=(name||'').toLowerCase().replace(/[\s_-]+/g,'');
+  return /^(cut(contour|line)?\d*|dieline\d*|diecut\d*|kisscut\d*|cutpath\d*|trimbox\d*)$/.test(n) || /(cutcontour|dieline|diecut|cutpath)/.test(n);
+}
+function selectedCutSpot(){ return (el('spotChoice')?.value || '').trim(); }
+function likelyCutSpots(){ return detectedSpots.filter(isLikelyCutSpotName); }
+function autoSelectCutSpot(){
+  const choice=el('spotChoice'); if(!choice) return;
+  const likely=likelyCutSpots();
+  if(likely.length===1) choice.value=likely[0];
+}
+function effectiveCutSpot(){
+  const src=el('cutSource').value, selected=selectedCutSpot();
+  if(src==='spot') return selected;
+  if(src==='auto') return selected && isLikelyCutSpotName(selected) ? selected : '';
+  return '';
+}
+
+function updateCutDetection(){
+  const box=el('cutDetect'), wrap=el('spotWrap'), choice=el('spotChoice'), src=el('cutSource').value;
+  wrap.style.display = detectedSpots.length ? 'block' : 'none';
+  if(detectedSpots.length){
+    const prev=choice.value; choice.innerHTML='';
+    const ph=document.createElement('option'); ph.value=''; ph.textContent='— Choose cut spot colour —'; choice.appendChild(ph);
+    detectedSpots.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n+(isLikelyCutSpotName(n)?'  • likely dieline':'');choice.appendChild(o)});
+    if(detectedSpots.includes(prev)) choice.value=prev; else autoSelectCutSpot();
+  } else choice.innerHTML='';
+  if(!sourceBytes){ box.textContent='Load a production-ready Working PDF to run preflight.'; return; }
+  const selected=effectiveCutSpot();
+  if(src==='trimbox'){
+    box.innerHTML=`<b>Cut source: PDF TrimBox.</b> A ${fmt(mm(el('cutW').value))} × ${fmt(mm(el('cutH').value))} mm rectangle will be generated for cutting.`;
+  } else if(src==='circle'){
+    box.innerHTML=`<b>Cut source: operator-defined circle / ellipse.</b> This is an explicit production override; the entered finished size will be used.`;
+  } else if(src==='rect'){
+    box.innerHTML=`<b>Cut source: operator-defined rectangle.</b> This is an explicit production override; the entered finished size will be used.`;
+  } else if(src==='spot'){
+    box.innerHTML=selectedCutSpot()?`<b>Cut source: supplied spot dieline “${selectedCutSpot()}”.</b> Only this spot will be removed from PRINT and isolated into CUT.`:`<b>Cut spot required.</b> Choose the supplied spot colour that represents the vector dieline.`;
+  } else if(selected){
+    box.innerHTML=`<b>Auto recognised dieline:</b> “${selected}”. Only this spot will be treated as the cut path; other spot colours remain printable.`;
+  } else if(detectedSpots.length){
+    const likely=likelyCutSpots();
+    if(likely.length>1) box.innerHTML=`<b>Ambiguous cut setup:</b> multiple likely dielines were detected (${likely.join(', ')}). Choose <b>Supplied spot-colour dieline</b> and select the correct cut spot.`;
+    else box.innerHTML=`<b>No recognised dieline name.</b> Spot colours were found (${detectedSpots.join(', ')}), but Auto will not assume they are cut paths. Auto will use the TrimBox as a rectangular cut unless you explicitly choose a supplied cut spot.`;
+  } else {
+    box.innerHTML=`<b>No spot-colour dieline detected.</b> Auto will use the PDF TrimBox as a rectangular cut. For a custom shape, prepare a Working PDF with a closed vector spot-colour dieline.`;
+  }
+}
+function effectiveShape(){
+  const src=el('cutSource').value;
+  if((src==='auto' || src==='spot') && effectiveCutSpot()) return 'custom';
+  if(src==='circle') return 'circle';
+  return 'rect';
+}
+
+function setPreset(doRecalc=true){
+  const custom = el('preset').value === 'custom';
+  el('sheetW').disabled = !custom; el('sheetH').disabled = !custom;
+  if(!custom){ el('sheetW').value=320; el('sheetH').value=450; }
+  if(doRecalc && !isLoadingPdf) recalc();
+}
+function enforceGap(){
+  const min = el('hasBleed').checked ? 1 : 0;
+  el('gap').min = min;
+  if(mm(el('gap').value) < min) el('gap').value = min;
+}
+
+function computeGrid(sw, sh, cutW, cutH, gap, artW=cutW, artH=cutH){
+  function one(cw,ch,aw,ah,rot){
+    const bleedX=Math.max(0,(aw-cw)/2), bleedY=Math.max(0,(ah-ch)/2);
+    const pitchX=cw+gap, pitchY=ch+gap;
+    const cols=Math.max(0,Math.floor((sw-2*bleedX+gap+1e-9)/pitchX));
+    const rows=Math.max(0,Math.floor((sh-2*bleedY+gap+1e-9)/pitchY));
+    const up=cols*rows;
+    const cutSpanW=cols?cols*cw+(cols-1)*gap:0;
+    const cutSpanH=rows?rows*ch+(rows-1)*gap:0;
+    const usedW=cols?cutSpanW+2*bleedX:0;
+    const usedH=rows?cutSpanH+2*bleedY:0;
+    return {cols,rows,up,ow:cw,oh:ch,artW:aw,artH:ah,bleedX,bleedY,pitchX,pitchY,rot,usedW,usedH,offX:(sw-usedW)/2,offY:(sh-usedH)/2};
+  }
+  const a=one(cutW,cutH,artW,artH,false);
+  if(!el('allowRotate').checked || Math.abs(cutW-cutH)<1e-6) return a;
+  const b=one(cutH,cutW,artH,artW,true);
+  if(b.up>a.up) return b;
+  if(b.up===a.up && b.usedW*b.usedH<a.usedW*a.usedH) return b;
+  return a;
+}
+function updateNamingState(){
+  const enabled=el('useNaming').checked;
+  el('jobNo').disabled=!enabled; el('custName').disabled=!enabled;
+  el('jobNoLabel').classList.toggle('required',enabled);
+  el('custNameLabel').classList.toggle('required',enabled);
+  el('jobNoWrap').style.opacity=enabled?'1':'.55';
+  el('custNameWrap').style.opacity=enabled?'1':'.55';
+}
+function getReadiness(g,sheets){
+  const issues=[], warnings=[], passes=[];
+  if(!sourceBytes) issues.push('Artwork PDF is required.'); else passes.push('Artwork PDF loaded.');
+  if(sourceBytes && sourcePageCount!==1) issues.push(`Working PDF must contain exactly 1 page; this file contains ${sourcePageCount}.`); else if(sourceBytes) passes.push('Single-page Working PDF.');
+  if(el('useNaming').checked && !el('jobNo').value.trim()) issues.push('Job number is required when production naming is enabled.');
+  if(el('useNaming').checked && !el('custName').value.trim()) issues.push('Customer name / abbreviation is required when production naming is enabled.');
+  if(mm(el('qty').value)<1) issues.push('Required quantity must be at least 1.');
+  if(mm(el('cutW').value)<=0 || mm(el('cutH').value)<=0) issues.push('Finished width and height are required.'); else passes.push(`Finished size ${fmt(mm(el('cutW').value))} × ${fmt(mm(el('cutH').value))} mm.`);
+  if(el('preset').value==='custom' && (mm(el('sheetW').value)<=0 || mm(el('sheetH').value)<=0)) issues.push('Valid custom sheet dimensions are required.');
+  const minGap=el('hasBleed').checked?1:0;
+  if(el('hasBleed').checked && mm(el('bleedAmount').value)<=0) issues.push('Bleed is enabled but the bleed amount is not valid.');
+  else if(el('hasBleed').checked) passes.push(`Bleed enabled: ${fmt(mm(el('bleedAmount').value))} mm per side.`);
+  else if(sourceBytes) warnings.push('Bleed is not enabled. Confirm this job genuinely requires no bleed.');
+  if(mm(el('gap').value)<minGap) issues.push(`Gap must be at least ${minGap} mm for the selected bleed setting.`);
+  if(g && !g.up) issues.push('Sticker does not fit on the selected sheet.');
+  if(g && g.up && !sheets) issues.push('Sheet quantity could not be calculated.');
+
+  const src=el('cutSource').value, cutSpot=effectiveCutSpot();
+  if(src==='spot' && !selectedCutSpot()) issues.push('A cut spot colour must be selected for Supplied spot-colour dieline mode.');
+  if((src==='spot' || (src==='auto' && cutSpot)) && cutSpot){
+    passes.push(`Cut dieline selected: ${cutSpot}.`);
+    if(!isLikelyCutSpotName(cutSpot)) warnings.push(`“${cutSpot}” is not a conventional dieline name; confirm this is intentionally the cut colour.`);
+  } else if(src==='auto' && likelyCutSpots().length>1 && !cutSpot){
+    issues.push('Multiple likely dieline spot colours were detected. Select the correct cut spot explicitly.');
+  } else if(src==='auto' && !cutSpot){
+    passes.push('Rectangular cut will use the PDF TrimBox / finished reference size.');
+    if(detectedSpots.length) warnings.push('Other spot colours were detected and will remain printable; none has been assumed to be a cut path.');
+  } else if(src==='trimbox') passes.push('Rectangular cut explicitly set from PDF TrimBox.');
+  else if(src==='circle') warnings.push('Manual circle / ellipse override is being used; confirm the entered finished size before production.');
+  else if(src==='rect') warnings.push('Manual rectangle override is being used; confirm the entered finished size before production.');
+
+  if(sourceBytes && sourceBoxes && !sourceBoxes.trim) warnings.push('No explicit TrimBox was detected; the page/crop box is being used as the finished reference. Prefer a production PDF with a correct TrimBox.');
+  if(sourceBytes && sourceBoxes && sourceBoxes.trim && el('hasBleed').checked && !sourceBoxes.bleed) warnings.push('Bleed is enabled but no explicit BleedBox was detected; the entered bleed value will be used.');
+  if(g?.up) passes.push(`Layout ${g.cols} × ${g.rows} = ${g.up}-up; ${sheets} sheet${sheets===1?'':'s'} required.`);
+  return {issues,warnings,passes};
+}
+function markField(id,bad){ const node=el(id); if(node) node.classList.toggle('invalid',!!bad); }
+function renderReadiness(state){
+  const panel=el('readiness'), list=el('readyList'); list.innerHTML='';
+  panel.classList.remove('pass','warning','stop');
+  const status=state.issues.length?'stop':(state.warnings.length?'warning':'pass');
+  panel.classList.add(status);
+  panel.querySelector('h3').innerHTML=`Preflight — <span class="pill ${status}">${status.toUpperCase()}</span>`;
+  state.issues.forEach(t=>{const d=document.createElement('div');d.className='readyline bad';d.textContent='✕ '+t;list.appendChild(d)});
+  state.warnings.forEach(t=>{const d=document.createElement('div');d.className='readyline warn';d.textContent='⚠ '+t;list.appendChild(d)});
+  state.passes.forEach(t=>{const d=document.createElement('div');d.className='readyline okay';d.textContent='✓ '+t;list.appendChild(d)});
+  const ready=state.issues.length===0;
+  markField('jobNo',el('useNaming').checked && !el('jobNo').value.trim());
+  markField('custName',el('useNaming').checked && !el('custName').value.trim());
+  markField('qty',mm(el('qty').value)<1);
+  markField('cutW',mm(el('cutW').value)<=0); markField('cutH',mm(el('cutH').value)<=0);
+  markField('bleedAmount',el('hasBleed').checked && mm(el('bleedAmount').value)<=0);
+  markField('spotChoice',el('cutSource').value==='spot' && !selectedCutSpot());
+  if(el('preset').value==='custom'){markField('sheetW',mm(el('sheetW').value)<=0);markField('sheetH',mm(el('sheetH').value)<=0)} else {markField('sheetW',false);markField('sheetH',false)}
+  el('dropZone').classList.toggle('invalid',!sourceBytes);
+  return ready;
+}
+
+function recalc(){
+  if(isLoadingPdf || isRecalculating) return;
+  isRecalculating=true;
+  try{
+  enforceCustomState();
+  const sw=mm(el('sheetW').value), sh=mm(el('sheetH').value), w=mm(el('cutW').value), h=mm(el('cutH').value), gap=mm(el('gap').value);
+  const qty=Math.max(0,Math.floor(mm(el('qty').value))), extras=Math.max(0,Math.floor(mm(el('overs').value))), target=qty+extras;
+  if(!sw||!sh||!w||!h){ lastCalc=null; const state=getReadiness(null,0); renderReadiness(state); el('generateFiles').disabled=true; el('generateFiles').title=state.issues.join('\n'); drawPreview(); return; }
+  const art=currentArtworkSizeMM();
+  const g=computeGrid(sw,sh,w,h,gap,art.w,art.h);
+  const sheets=g.up ? Math.ceil(target/g.up) : 0;
+  const produced=sheets*g.up, over=Math.max(0,produced-qty);
+  lastCalc={sw,sh,w,h,gap,qty,extras,target,...g,sheets,produced,over};
+  el('layoutStat').textContent = g.up ? `${g.cols} × ${g.rows}${g.rot?' rotated':''}` : 'Does not fit';
+  el('upStat').textContent = g.up || '—';
+  el('sheetsStat').textContent = sheets || '—';
+  el('produceStat').textContent = produced || '—';
+  el('prodOversStat').textContent = produced ? over : '—';
+  el('targetStat').textContent = target || '—';
+  const state=getReadiness(g,sheets);
+  const ready=renderReadiness(state);
+  el('generateFiles').disabled = !ready;
+  el('generateFiles').title = ready ? 'Generate print PDF, proof PDF and cut AI' : state.issues.join('\n');
+  updateCutDetection(); drawPreview();
+  } finally { isRecalculating=false; }
+}
+function enforceCustomState(){
+  const custom=el('preset').value==='custom'; el('sheetW').disabled=!custom; el('sheetH').disabled=!custom;
+}
+function drawPreview(){
+  const c=el('preview'), ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+  if(!lastCalc) return;
+  const d=lastCalc, pad=25, s=Math.min((c.width-pad*2)/d.sw,(c.height-pad*2)/d.sh), ox=(c.width-d.sw*s)/2, oy=(c.height-d.sh*s)/2;
+  ctx.strokeStyle='#777';ctx.lineWidth=1;ctx.strokeRect(ox,oy,d.sw*s,d.sh*s);
+  const cutW=(d.rot?d.h:d.w), cutH=(d.rot?d.w:d.h);
+  if(el('hasBleed').checked){
+    ctx.strokeStyle='#bfd3e6';ctx.lineWidth=1;
+    for(let r=0;r<d.rows;r++) for(let col=0;col<d.cols;col++){
+      const x=ox+(d.offX+col*d.pitchX)*s, y=oy+(d.offY+r*d.pitchY)*s;
+      ctx.strokeRect(x,y,d.artW*s,d.artH*s);
+    }
+  }
+  ctx.strokeStyle='#ff1493';ctx.lineWidth=1.3;
+  for(let r=0;r<d.rows;r++) for(let col=0;col<d.cols;col++){
+    const artX=ox+(d.offX+col*d.pitchX)*s, artY=oy+(d.offY+r*d.pitchY)*s;
+    const x=artX+d.bleedX*s, y=artY+d.bleedY*s;
+    if(effectiveShape()==='circle'){
+      ctx.beginPath();ctx.ellipse(x+cutW*s/2,y+cutH*s/2,cutW*s/2,cutH*s/2,0,0,Math.PI*2);ctx.stroke();
+    } else if(effectiveShape()==='custom'){
+      ctx.save(); ctx.setLineDash([4,3]); ctx.strokeRect(x,y,cutW*s,cutH*s); ctx.restore();
+    } else ctx.strokeRect(x,y,cutW*s,cutH*s);
+  }
+  ctx.strokeStyle='#222';ctx.lineWidth=1.5;
+  const inset=7*s, len=6*s;
+  const marks=[
+    [[ox+inset,oy+inset+len],[ox+inset,oy+inset],[ox+inset+len,oy+inset]],
+    [[ox+d.sw*s-inset-len,oy+inset],[ox+d.sw*s-inset,oy+inset],[ox+d.sw*s-inset,oy+inset+len]],
+    [[ox+inset,oy+d.sh*s-inset-len],[ox+inset,oy+d.sh*s-inset],[ox+inset+len,oy+d.sh*s-inset]],
+    [[ox+d.sw*s-inset-len,oy+d.sh*s-inset],[ox+d.sw*s-inset,oy+d.sh*s-inset],[ox+d.sw*s-inset,oy+d.sh*s-inset-len]]
+  ];
+  for(const m of marks){ctx.beginPath();ctx.moveTo(...m[0]);ctx.lineTo(...m[1]);ctx.lineTo(...m[2]);ctx.stroke();}
+}
+async function loadPdf(file){
+  if(isLoadingPdf) return;
+  isLoadingPdf=true;
+  sourceBytes=null; sourceBoxes=null; sourcePageCount=0; detectedSpots=[]; lastCalc=null;
+  el('generateFiles').disabled=true;
+  el('fileInfo').textContent='Reading PDF…';
+  el('status').textContent='Analysing PDF page boxes and cut information…';
+  try{
+    const bytes=await file.arrayBuffer();
+    const doc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+    if(doc.getPageCount()<1) throw new Error('No pages');
+    const pageCount=doc.getPageCount();
+    const p=doc.getPage(0), media=normalisePageBox(p.getSize ? {x:0,y:0,...p.getSize()} : {x:0,y:0,width:p.getWidth(),height:p.getHeight()});
+    const boxes={
+      media,
+      crop: tryGetPageBox(p,'getCropBox') || media,
+      trim: tryGetPageBox(p,'getTrimBox'),
+      bleed: tryGetPageBox(p,'getBleedBox'),
+      art: tryGetPageBox(p,'getArtBox')
+    };
+    const ref=chooseReferenceBox(boxes) || media;
+    const sizeMM={w:ref.width/MM_TO_PT,h:ref.height/MM_TO_PT};
+
+    // Analyse spots separately: if a complex PDF defeats the spot scanner, still load the job.
+    let spots=[], spotWarning='';
+    try{ spots=await detectSpotColours(bytes); }
+    catch(e){ spotWarning=` Spot-colour scan skipped (${e.message}).`; }
+
+    // Commit all detected values together. Do not recalculate while fields are being populated.
+    sourceBytes=bytes; sourceName=file.name; sourceBoxes=boxes; sourceSizeMM=sizeMM; sourcePageCount=pageCount; detectedSpots=spots;
+    el('cutW').value=sizeMM.w.toFixed(2); el('cutH').value=sizeMM.h.toFixed(2);
+    if(boxes.trim && boxes.bleed && (boxes.bleed.width>boxes.trim.width+0.1 || boxes.bleed.height>boxes.trim.height+0.1)){
+      el('hasBleed').checked=true;
+      const bx=Math.max(0,(boxes.bleed.width-boxes.trim.width)/(2*MM_TO_PT));
+      const by=Math.max(0,(boxes.bleed.height-boxes.trim.height)/(2*MM_TO_PT));
+      const inferred=[bx,by].filter(v=>v>0.01);
+      if(inferred.length) el('bleedAmount').value=Math.min(...inferred).toFixed(2);
+    }
+    updateBleedField(false);
+    enforceGap();
+
+    const parts=[`${pageCount} page${pageCount===1?'':'s'}`, `Detected finished/reference size: ${sizeMM.w.toFixed(2)} × ${sizeMM.h.toFixed(2)} mm`];
+    parts.push(`TrimBox ${boxMmString(boxes.trim)}`);
+    parts.push(`BleedBox ${boxMmString(boxes.bleed)}`);
+    parts.push(`Page ${boxMmString(boxes.crop||boxes.media)}`);
+    parts.push(spots.length ? `Spot colours: ${spots.join(', ')}` : 'No spot colours detected');
+    el('fileInfo').textContent=parts.join(' • ')+'.'+spotWarning;
+    el('status').innerHTML=`<b>${file.name}</b> loaded. Artwork placement will use the ${el('hasBleed').checked && boxes.bleed ? 'BleedBox (including artwork beyond trim)' : (boxes.trim ? 'TrimBox' : 'page box')}. Crop marks outside that box are excluded.`;
+  } catch(e){
+    sourceBytes=null; sourceBoxes=null; sourcePageCount=0; detectedSpots=[]; lastCalc=null;
+    el('fileInfo').textContent='Could not read PDF: '+e.message;
+    el('status').textContent='PDF load failed. This is a tool parsing error, not necessarily a bad artwork file.';
+  } finally {
+    isLoadingPdf=false;
+    updateCutDetection();
+    recalc();
+  }
+}
+function drawRegMarks(page, sw, sh){
+  const inset=7*MM_TO_PT, len=6*MM_TO_PT, W=sw*MM_TO_PT, H=sh*MM_TO_PT, lw=0.4*MM_TO_PT;
+  const black=rgb(0,0,0);
+  const line=(x1,y1,x2,y2)=>page.drawLine({start:{x:x1,y:y1},end:{x:x2,y:y2},thickness:lw,color:black});
+  // PDF coordinates are bottom-left.
+  line(inset,H-inset, inset+len,H-inset); line(inset,H-inset, inset,H-inset-len);
+  line(W-inset-len,H-inset, W-inset,H-inset); line(W-inset,H-inset, W-inset,H-inset-len);
+  line(inset,inset, inset+len,inset); line(inset,inset, inset,inset+len);
+  line(W-inset-len,inset, W-inset,inset); line(W-inset,inset, W-inset,inset+len);
+}
+function drawCut(page,d){
+  const magenta=rgb(0.92,0.036,0.549), t=1.0;
+  const cutW=(d.rot?d.h:d.w), cutH=(d.rot?d.w:d.h);
+  for(let r=0;r<d.rows;r++) for(let c=0;c<d.cols;c++){
+    const artX=(d.offX+c*d.pitchX)*MM_TO_PT;
+    const artTop=(d.offY+r*d.pitchY)*MM_TO_PT;
+    const artY=d.sh*MM_TO_PT-artTop-d.artH*MM_TO_PT;
+    const x=artX+d.bleedX*MM_TO_PT;
+    const y=artY+d.bleedY*MM_TO_PT;
+    const w=cutW*MM_TO_PT,h=cutH*MM_TO_PT;
+    if(effectiveShape()==='custom') continue;
+    if(effectiveShape()==='circle') page.drawEllipse({x:x+w/2,y:y+h/2,xScale:w/2,yScale:h/2,borderColor:magenta,borderWidth:t});
+    else page.drawRectangle({x,y,width:w,height:h,borderColor:magenta,borderWidth:t});
+  }
+}
+function pdfObjName(obj){
+  try{
+    if(!obj) return '';
+    if(typeof obj.decodeText==='function') return obj.decodeText();
+    const s=String(obj);
+    return s.startsWith('/') ? s.slice(1) : s;
+  }catch(e){ return ''; }
+}
+function spotResourceNames(resources, targets){
+  const result=new Set();
+  try{
+    const {PDFName,PDFDict,PDFArray}=PDFLib;
+    const cs=resources?.lookupMaybe ? resources.lookupMaybe(PDFName.of('ColorSpace'), PDFDict) : null;
+    if(!cs) return result;
+    for(const key of cs.keys()){
+      let val=cs.get(key);
+      try{ val=cs.context ? val : resources.context.lookup(val); }catch(e){ try{ val=resources.context.lookup(val); }catch(_){} }
+      let arr=val;
+      try{ if(!(arr instanceof PDFArray)) arr=resources.context.lookup(val,PDFArray); }catch(e){}
+      if(!arr || typeof arr.get!=='function') continue;
+      const kind=pdfObjName(arr.get(0));
+      if(kind==='Separation'){
+        const spot=pdfObjName(arr.get(1));
+        if(targets.has(spot)) result.add(pdfObjName(key));
+      } else if(kind==='DeviceN'){
+        let names=arr.get(1);
+        try{ if(!(names instanceof PDFArray)) names=resources.context.lookup(names,PDFArray); }catch(e){}
+        if(names && typeof names.size==='function'){
+          for(let i=0;i<names.size();i++) if(targets.has(pdfObjName(names.get(i)))) result.add(pdfObjName(key));
+        }
+      }
+    }
+  }catch(e){}
+  return result;
+}
+function stripSpotPaintOps(content, spotCS){
+  if(!spotCS || !spotCS.size) return content;
+  let strokeCS='', fillCS='';
+  const stack=[];
+  const lines=content.split(/(?<=\n)/);
+  const out=[];
+  for(let raw of lines){
+    const line=raw.replace(/[\r\n]+$/,'');
+    const eol=raw.slice(line.length);
+    let m;
+    if(/^\s*q\s*$/.test(line)) stack.push([strokeCS,fillCS]);
+    else if(/^\s*Q\s*$/.test(line)) { const s=stack.pop(); if(s){strokeCS=s[0];fillCS=s[1];} }
+    if((m=line.match(/\/([^\s\/]+)\s+CS\b/))) strokeCS=m[1];
+    if((m=line.match(/\/([^\s\/]+)\s+cs\b/))) fillCS=m[1];
+    const strokeSpot=spotCS.has(strokeCS), fillSpot=spotCS.has(fillCS);
+    let replaced=line;
+    if(strokeSpot || fillSpot){
+      if(/^\s*S\s*$/.test(line) || /^\s*s\s*$/.test(line)) replaced='n';
+      else if(/^\s*f\*?\s*$/.test(line) && fillSpot) replaced='n';
+      else if(/^\s*B\*?\s*$/.test(line) || /^\s*b\*?\s*$/.test(line)){
+        if(strokeSpot && fillSpot) replaced='n';
+        else if(strokeSpot) replaced = line.trim().includes('*') ? 'f*' : 'f';
+        else if(fillSpot) replaced='S';
+      }
+    }
+    out.push(replaced+eol);
+  }
+  return out.join('');
+}
+function keepOnlySpotPaintOps(content, spotCS){
+  // Keep geometry and graphics-state operators, but suppress visible artwork.
+  // Spot-colour path painting survives; ordinary process-colour artwork, text,
+  // images and shadings are discarded. This is intended for CUT output.
+  if(!spotCS || !spotCS.size) return {content,found:false};
+  let strokeCS='', fillCS='', found=false;
+  const state=[];
+  const lines=content.split(/(?<=\n)/);
+  const out=[];
+  let inInline=false;
+  for(const raw of lines){
+    const line=raw.replace(/[\r\n]+$/,''); const eol=raw.slice(line.length); const t=line.trim();
+    let m;
+    if(/^BI\b/.test(t)) { inInline=true; continue; }
+    if(inInline){ if(/^EI\b/.test(t)) inInline=false; continue; }
+    if(/^q$/.test(t)) state.push([strokeCS,fillCS]);
+    else if(/^Q$/.test(t)){ const s=state.pop(); if(s){strokeCS=s[0];fillCS=s[1];} }
+    if((m=line.match(/\/([^\s\/]+)\s+CS\b/))) strokeCS=m[1];
+    if((m=line.match(/\/([^\s\/]+)\s+cs\b/))) fillCS=m[1];
+    const strokeSpot=spotCS.has(strokeCS), fillSpot=spotCS.has(fillCS);
+    let repl=line;
+    if(/\sDo\s*$/.test(line) || /\ssh\s*$/.test(line)) repl='';
+    else if(/(?:\)|\])\s*Tj\s*$/.test(line) || /\]\s*TJ\s*$/.test(line) || /^\s*['\"]/.test(t)) repl='';
+    else if(/^\s*S\s*$/.test(line) || /^\s*s\s*$/.test(line)) { if(strokeSpot) found=true; else repl='n'; }
+    else if(/^\s*f\*?\s*$/.test(line) || /^\s*F\s*$/.test(line)) { if(fillSpot) found=true; else repl='n'; }
+    else if(/^\s*B\*?\s*$/.test(line) || /^\s*b\*?\s*$/.test(line)){
+      if(strokeSpot || fillSpot){ found=true; if(strokeSpot&&!fillSpot) repl='S'; else if(fillSpot&&!strokeSpot) repl='f'; }
+      else repl='n';
+    }
+    out.push(repl+eol);
+  }
+  return {content:out.join(''),found};
+}
+async function isolateSuppliedSpotDielines(pdfDoc,targetNames){
+  if(!targetNames || !targetNames.length) return {isolated:0,found:false};
+  const targets=new Set(targetNames);
+  const {PDFName,PDFDict,PDFArray,PDFRawStream,decodePDFRawStream}=PDFLib;
+  if(!PDFName || !PDFDict || !PDFRawStream || !decodePDFRawStream) throw new Error('This browser build cannot isolate supplied spot dielines.');
+  const ctx=pdfDoc.context; let isolated=0, found=false;
+  for(const page of pdfDoc.getPages()){
+    let resources=null; try{ resources=page.node.Resources(); }catch(e){ try{ resources=page.node.lookupMaybe(PDFName.of('Resources'),PDFDict); }catch(_){} }
+    const spotCS=spotResourceNames(resources,targets);
+    let contents=null; try{ contents=page.node.Contents(); }catch(e){}
+    const refs=[];
+    if(contents instanceof PDFArray){ for(let i=0;i<contents.size();i++) refs.push(contents.get(i)); } else if(contents) refs.push(contents);
+    for(const ref of refs){
+      let stream; try{ stream=ctx.lookup(ref,PDFRawStream); }catch(e){ continue; }
+      try{
+        const bytes=decodePDFRawStream(stream).decode();
+        const src=new TextDecoder('latin1').decode(bytes);
+        const kept=keepOnlySpotPaintOps(src,spotCS);
+        found=found||kept.found;
+        const enc=new TextEncoder().encode(kept.content);
+        const entries={}; const dict=stream.dict;
+        for(const k of dict.keys()) if(!['Length','Filter','DecodeParms'].includes(pdfObjName(k))) entries[pdfObjName(k)]=dict.get(k);
+        ctx.assign(ref,ctx.flateStream(enc,entries)); isolated++;
+      }catch(e){}
+    }
+  }
+  return {isolated,found};
+}
+function neutralizeSpotColorants(pdfDoc, targetNames){
+  // For production PRINT output, turn the selected Separation colourant into /None.
+  // In PDF, /None is a non-marking colourant: content can remain in place but produces no ink.
+  if(!targetNames || !targetNames.length) return {neutralized:0};
+  const targets=new Set(targetNames);
+  const {PDFName,PDFArray}=PDFLib;
+  const ctx=pdfDoc.context;
+  let neutralized=0;
+  try{
+    for(const [ref,obj] of ctx.enumerateIndirectObjects()){
+      let arr=obj;
+      try{
+        if(!(arr instanceof PDFArray)) continue;
+        if(arr.size()<2) continue;
+        const kind=pdfObjName(arr.get(0));
+        if(kind==='Separation'){
+          const spot=pdfObjName(arr.get(1));
+          if(targets.has(spot)){
+            arr.set(1,PDFName.of('None'));
+            neutralized++;
+          }
+        } else if(kind==='DeviceN'){
+          // DeviceN can contain several named colourants. Replace only selected names with /None.
+          let names=arr.get(1);
+          try{ if(!(names instanceof PDFArray)) names=ctx.lookup(names,PDFArray); }catch(e){}
+          if(names && typeof names.size==='function'){
+            for(let i=0;i<names.size();i++){
+              if(targets.has(pdfObjName(names.get(i)))){
+                names.set(i,PDFName.of('None'));
+                neutralized++;
+              }
+            }
+          }
+        }
+      }catch(e){}
+    }
+  }catch(e){}
+  return {neutralized};
+}
+async function stripSuppliedSpotDielines(pdfDoc, targetNames){
+  if(!targetNames || !targetNames.length) return {removed:0};
+  const targets=new Set(targetNames);
+  const {PDFName,PDFDict,PDFArray,PDFRawStream,decodePDFRawStream}=PDFLib;
+  if(!PDFName || !PDFDict || !PDFRawStream || !decodePDFRawStream) throw new Error('This browser build cannot safely remove supplied spot dielines.');
+  const ctx=pdfDoc.context;
+  let removed=0;
+  const seen=new Set();
+  const processStreamRef=(ref, inheritedResources)=>{
+    const id=String(ref); if(seen.has(id)) return; seen.add(id);
+    let stream; try{ stream=ctx.lookup(ref,PDFRawStream); }catch(e){ return; }
+    let dict=stream.dict;
+    let resources=inheritedResources;
+    try{ resources=dict.lookupMaybe(PDFName.of('Resources'),PDFDict) || inheritedResources; }catch(e){}
+    const spotCS=spotResourceNames(resources,targets);
+    if(spotCS.size){
+      try{
+        const bytes=decodePDFRawStream(stream).decode();
+        const src=new TextDecoder('latin1').decode(bytes);
+        const dst=stripSpotPaintOps(src,spotCS);
+        if(dst!==src){
+          const enc=new TextEncoder().encode(dst);
+          const entries={};
+          try{ for(const k of dict.keys()) if(pdfObjName(k)!=='Length' && pdfObjName(k)!=='Filter' && pdfObjName(k)!=='DecodeParms') entries[pdfObjName(k)]=dict.get(k); }catch(e){}
+          const replacement=ctx.flateStream(enc,entries);
+          ctx.assign(ref,replacement); removed++;
+          stream=replacement; dict=replacement.dict;
+        }
+      }catch(e){ console.warn('Spot strip stream failed',e); }
+    }
+    try{
+      const xobjs=resources?.lookupMaybe ? resources.lookupMaybe(PDFName.of('XObject'),PDFDict) : null;
+      if(xobjs){
+        for(const k of xobjs.keys()){
+          const xr=xobjs.get(k);
+          try{
+            const xo=ctx.lookup(xr);
+            const subtype=pdfObjName(xo?.dict?.get(PDFName.of('Subtype')));
+            if(subtype==='Form') processStreamRef(xr, resources);
+          }catch(e){}
+        }
+      }
+    }catch(e){}
+  };
+  for(const page of pdfDoc.getPages()){
+    let resources=null;
+    try{ resources=page.node.Resources(); }catch(e){ try{ resources=page.node.lookupMaybe(PDFName.of('Resources'),PDFDict); }catch(_){} }
+    let contents=null;
+    try{ contents=page.node.Contents(); }catch(e){}
+    if(contents){
+      try{
+        if(contents instanceof PDFArray){ for(let i=0;i<contents.size();i++) processStreamRef(contents.get(i),resources); }
+        else processStreamRef(contents,resources);
+      }catch(e){}
+    }
+    try{
+      const xobjs=resources?.lookupMaybe ? resources.lookupMaybe(PDFName.of('XObject'),PDFDict) : null;
+      if(xobjs) for(const k of xobjs.keys()){
+        const xr=xobjs.get(k);
+        try{ const xo=ctx.lookup(xr); if(pdfObjName(xo?.dict?.get(PDFName.of('Subtype')))==='Form') processStreamRef(xr,resources); }catch(e){}
+      }
+    }catch(e){}
+  }
+  return {removed};
+}
+async function buildImposedPdf(mode,d){
+  const src=await PDFDocument.load(sourceBytes,{ignoreEncryption:true});
+  let stripResult={removed:0,neutralized:0};
+  const productionCutSpot=effectiveCutSpot();
+  if(mode==='print' && effectiveShape()==='custom' && productionCutSpot){
+    const target=[productionCutSpot];
+    const neutral=neutralizeSpotColorants(src,target);
+    stripResult.neutralized=neutral.neutralized;
+    // Secondary cleanup. IMPORTANT: only the operator-confirmed cut spot is touched;
+    // Pantones and other printable spots must remain unchanged.
+    try{
+      const stripped=await stripSuppliedSpotDielines(src,target);
+      stripResult.removed=stripped.removed||0;
+    }catch(e){}
+    if(!stripResult.neutralized && !stripResult.removed) throw new Error(`The selected cut spot (${productionCutSpot}) could not be disabled safely. PRINT output has been stopped rather than risk printing the dieline.`);
+  }
+  const out=await PDFDocument.create();
+  const srcPage=src.getPage(0);
+  const liveBoxes={
+    media: normalisePageBox(srcPage.getSize ? {x:0,y:0,...srcPage.getSize()} : {x:0,y:0,width:srcPage.getWidth(),height:srcPage.getHeight()}),
+    crop: tryGetPageBox(srcPage,'getCropBox'),
+    trim: tryGetPageBox(srcPage,'getTrimBox'),
+    bleed: tryGetPageBox(srcPage,'getBleedBox')
+  };
+  const refBox=chooseReferenceBox(liveBoxes) || liveBoxes.media;
+  const embedBox=chooseEmbedBox(liveBoxes, el('hasBleed').checked) || refBox;
+  const embedded=await out.embedPage(srcPage, embedBox);
+  const sourceArtW=embedBox.width, sourceArtH=embedBox.height;
+  const targetArtW=(el('hasBleed').checked ? d.artW : d.ow)*MM_TO_PT;
+  const targetArtH=(el('hasBleed').checked ? d.artH : d.oh)*MM_TO_PT;
+  for(let p=0;p<d.sheets;p++){
+    const page=out.addPage([d.sw*MM_TO_PT,d.sh*MM_TO_PT]);
+    for(let r=0;r<d.rows;r++) for(let c=0;c<d.cols;c++){
+      const artX=(d.offX+c*d.pitchX)*MM_TO_PT;
+      const artTop=(d.offY+r*d.pitchY)*MM_TO_PT;
+      const artY=d.sh*MM_TO_PT-artTop-d.artH*MM_TO_PT;
+      // pdf-lib rotates around the draw origin; offset X by the pre-rotation artwork width so the rotated bounding box starts at artX.
+      if(d.rot) page.drawPage(embedded,{x:artX+targetArtW,y:artY,width:targetArtH,height:targetArtW,rotate:PDFLib.degrees(90)});
+      else page.drawPage(embedded,{x:artX,y:artY,width:targetArtW,height:targetArtH});
+    }
+    if(mode==='proof' && effectiveShape()!=='custom') drawCut(page,d);
+    drawRegMarks(page,d.sw,d.sh);
+  }
+  return {bytes:await out.save(),stripResult};
+}
+async function buildCustomSpotCutPdf(d){
+  const src=await PDFDocument.load(sourceBytes,{ignoreEncryption:true});
+  const selected=effectiveCutSpot();
+  if(!selected) throw new Error('No cut spot colour has been selected.');
+  const iso=await isolateSuppliedSpotDielines(src,[selected]);
+  if(!iso.found) throw new Error(`The selected cut spot “${selected}” was detected, but its vector contour could not be isolated safely. Prepare/repair the Working PDF rather than allowing the generator to guess.`);
+  const out=await PDFDocument.create();
+  const srcPage=src.getPage(0);
+  const liveBoxes={media:normalisePageBox(srcPage.getSize?{x:0,y:0,...srcPage.getSize()}:{x:0,y:0,width:srcPage.getWidth(),height:srcPage.getHeight()}),crop:tryGetPageBox(srcPage,'getCropBox'),trim:tryGetPageBox(srcPage,'getTrimBox'),bleed:tryGetPageBox(srcPage,'getBleedBox')};
+  const refBox=chooseReferenceBox(liveBoxes)||liveBoxes.media;
+  const embedBox=chooseEmbedBox(liveBoxes,el('hasBleed').checked)||refBox;
+  const embedded=await out.embedPage(srcPage,embedBox);
+  const targetArtW=(el('hasBleed').checked?d.artW:d.ow)*MM_TO_PT;
+  const targetArtH=(el('hasBleed').checked?d.artH:d.oh)*MM_TO_PT;
+  const page=out.addPage([d.sw*MM_TO_PT,d.sh*MM_TO_PT]);
+  for(let r=0;r<d.rows;r++) for(let c=0;c<d.cols;c++){
+    const artX=(d.offX+c*d.pitchX)*MM_TO_PT;
+    const artTop=(d.offY+r*d.pitchY)*MM_TO_PT;
+    const artY=d.sh*MM_TO_PT-artTop-d.artH*MM_TO_PT;
+    if(d.rot) page.drawPage(embedded,{x:artX+targetArtW,y:artY,width:targetArtH,height:targetArtW,rotate:PDFLib.degrees(90)});
+    else page.drawPage(embedded,{x:artX,y:artY,width:targetArtW,height:targetArtH});
+  }
+  drawRegMarks(page,d.sw,d.sh);
+  out.setTitle('Sticker Cut File'); out.setSubject('PDF-compatible Illustrator cut file using supplied spot contour');
+  return await out.save();
+}
+async function generateFiles(){
+  if(!sourceBytes||!lastCalc) return;
+  el('generateFiles').disabled=true;
+  el('status').textContent='Generating PRINT PDF, PROOF PDF and CUT AI…';
+  try{
+    const d=lastCalc;
+    const printResult=await buildImposedPdf('print',d);
+    const proofResult=await buildImposedPdf('proof',d);
+
+    let cutBytes;
+    if(effectiveShape()==='custom'){
+      cutBytes=await buildCustomSpotCutPdf(d);
+    } else {
+      const cut=await PDFDocument.create();
+      const cp=cut.addPage([d.sw*MM_TO_PT,d.sh*MM_TO_PT]);
+      drawCut(cp,d); drawRegMarks(cp,d.sw,d.sh);
+      cut.setTitle('Sticker Cut File'); cut.setSubject('PDF-compatible Illustrator cut file');
+      cutBytes=await cut.save();
+    }
+
+    urls.forEach(URL.revokeObjectURL); urls=[];
+    const qtyLabel=Math.max(0,Math.floor(mm(el('qty').value)));
+    let base;
+    if(el('useNaming').checked){
+      const job=cleanName(el('jobNo').value);
+      const customer=cleanName(el('custName').value);
+      base=`${job} ${customer} - Stickers ${d.up}up - Qty ${qtyLabel}`.replace(/\s+/g,' ').trim();
+    } else {
+      base=`${cleanName(safeStem(sourceName))} - Stickers ${d.up}up - Qty ${qtyLabel}`.replace(/\s+/g,' ').trim();
+    }
+    const printName=`${base} - ${d.sheets} Sheets - Print.pdf`;
+    const proofName=`${base} - ${d.sheets} Sheets - Proof.pdf`;
+    const cutName=`${base} - Cut.ai`;
+
+    const printUrl=URL.createObjectURL(new Blob([printResult.bytes],{type:'application/pdf'}));
+    const proofUrl=URL.createObjectURL(new Blob([proofResult.bytes],{type:'application/pdf'}));
+    const cutUrl=URL.createObjectURL(new Blob([cutBytes],{type:'application/pdf'}));
+    urls.push(printUrl,proofUrl,cutUrl);
+
+    const dl=el('downloads'); dl.innerHTML='';
+    const aPrint=document.createElement('a'); aPrint.href=printUrl; aPrint.download=printName; aPrint.textContent='Download PRINT PDF';
+    const aProof=document.createElement('a'); aProof.href=proofUrl; aProof.download=proofName; aProof.textContent='Download PROOF PDF';
+    const aCut=document.createElement('a'); aCut.href=cutUrl; aCut.download=cutName; aCut.textContent='Download CUT AI';
+    dl.append(aPrint,aProof,aCut); dl.style.display='flex';
+
+    el('status').innerHTML=`Generated all three files: <b>PRINT PDF</b>, <b>PROOF PDF</b> and <b>CUT AI</b>. ${(printResult.stripResult.neutralized||printResult.stripResult.removed) ? `The print version disabled the supplied spot dieline${printResult.stripResult.neutralized ? ` by converting <b>${printResult.stripResult.neutralized}</b> spot colourant${printResult.stripResult.neutralized===1?'':'s'} to non-printing /None` : ''}${printResult.stripResult.removed ? ` and cleaned <b>${printResult.stripResult.removed}</b> content stream${printResult.stripResult.removed===1?'':'s'}` : ''}.` : ''} Layout: <b>${d.up}-up</b>, <b>${d.sheets}</b> sheet${d.sheets===1?'':'s'}, <b>${d.produced}</b> stickers total.`;
+  }catch(e){ el('status').textContent='Generation failed: '+e.message; }
+  recalc();
+}
+
+const dz=el('dropZone'), fi=el('pdfFile');
+dz.addEventListener('click',()=>fi.click());
+dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fi.click();}});
+['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt,e=>{e.preventDefault();e.stopPropagation();dz.classList.add('dragover')}));
+['dragleave','drop'].forEach(evt=>dz.addEventListener(evt,e=>{e.preventDefault();e.stopPropagation();dz.classList.remove('dragover')}));
+dz.addEventListener('drop',e=>{const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(!f)return; if(!(f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))){el('fileInfo').textContent='Please drop a PDF file.';return;} loadPdf(f);});
+fi.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadPdf(f); });
+el('preset').addEventListener('change',()=>{setPreset(false);recalc();}); el('hasBleed').addEventListener('change',()=>{updateBleedField(true);enforceGap();recalc();}); el('useNaming').addEventListener('change',()=>{updateNamingState();recalc();});
+['jobNo','custName','qty','overs','cutSource','spotChoice','cutW','cutH','bleedAmount','gap','sheetW','sheetH','allowRotate'].forEach(id=>el(id).addEventListener('input',()=>{if((id==='cutW'||id==='cutH') && el('hasBleed').checked && mm(el('bleedAmount').value)<=0) updateBleedField(true);recalc();}));
+
+el('cutSource').addEventListener('change',()=>{updateCutDetection();recalc();});
+el('spotChoice').addEventListener('change',()=>{updateCutDetection();recalc();});
+el('refresh').addEventListener('click',recalc); el('generateFiles').addEventListener('click',generateFiles);
+updateBleedField(false); updateNamingState(); setPreset(false); recalc();
+</script>
+</body>
+</html>
